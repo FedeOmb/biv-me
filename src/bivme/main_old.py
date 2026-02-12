@@ -6,14 +6,14 @@ import tomli
 import datetime
 from loguru import logger
 
-from bivme.preprocessing.dicom.run_preprocessing_pipeline import perform_preprocessing_from_nifti
+from bivme.preprocessing.dicom.run_preprocessing_pipeline import perform_preprocessing
 from bivme.preprocessing.dicom.run_preprocessing_pipeline import validate_config as validate_config_preprocessing
 from bivme.fitting.perform_fit import perform_fitting
 from bivme.fitting.perform_fit import validate_config as validate_config_fitting
 
 def run_preprocessing(case, config, mylogger):
     try:
-        perform_preprocessing_from_nifti(case, config, mylogger)
+        perform_preprocessing(case, config, mylogger)
     except KeyboardInterrupt:
         mylogger.info(f"Program interrupted by the user")
         sys.exit(0)
