@@ -7,7 +7,7 @@ version = "1.1.6" # for semantic versioning - Major.Minor.Patch sequence
 
 [modules]
 preprocessing = true
-fitting = true
+fitting = false
 # Define which modules you want to run. 
 # preprocessing generates GPFiles and SliceInfo files for biv model fitting directly from a DICOM directory
 # fitting carries out biv model fitting on a set of GPFiles and SliceInfo files
@@ -67,7 +67,7 @@ export_images = false
 # Below are the parameters used to configure preprocessing of DICOM files 
 # Skip these if you do not intend to run preprocessing
 [input_pp]
-source = "./sunnybrook/dicoms"
+source = "../../sunnybrook/dicoms"
 # Define the directory containing raw dicoms. Files must be grouped into one folder per case
 # Default: "../../example/dicoms"
 
@@ -79,11 +79,11 @@ analyst_id = "analyst1"
 # Define the id of the analyst performing the preprocessing. Useful e.g. if view predictions need to be corrected
 # Default: "analyst1"
 
-processing = "./sunnybrook/processing"
+processing = "../..//sunnybrook/processing"
 # Define the directory where processing files (including view predictions, segmentations) will be written
 # Default: "../../example/processing"
 
-states = "./sunnybrook/states"
+states = "../../sunnybrook/states"
 # Define the directory where view predictions and log files will be written out to
 # Default: "../../example/states"
 
@@ -116,7 +116,7 @@ overwrite = false
 # Define to overwrite the processed folder and outputs of an already preprocessed case, if it exists
 # Default: false
 
-output_directory = "./sunnybrook/guidepoints"
+output_directory = "../../sunnybrook/guidepoints"
 # Define the directory where GPFiles will be created
 # If fitting and preprocessing are both enabled, this output_directory will also be the gp_directory used for fitting (see below)
 # Default: "../../example/guidepoints"
@@ -141,7 +141,7 @@ output_directory = "./sunnybrook/guidepoints"
 
 # Below are the parameters used to configure biv model fitting 
 [input_fitting]
-gp_directory = "./sunnybrook/guidepoints/default"
+gp_directory = "../../sunnybrook/guidepoints/default"
 # Define the directory containing guidepoint files
 # If fitting and preprocessing are both enabled, this gp_directory will also be the output_directory used in preprocessing (see above)
 # default: "../../example/guidepoints/default"
@@ -218,11 +218,11 @@ overwrite = false
 # Define to overwrite the output mesh if it exists
 # Default: false
 
-output_directory = "./output/"
+output_directory = "../output/"
 # Define where to save the fitted models and files
 # default: "../output/"
 
 [multiprocessing]
-workers = 8
+workers = 6
 # number of workers to use for multi processing
 # default: 1
