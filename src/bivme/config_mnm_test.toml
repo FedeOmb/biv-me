@@ -6,7 +6,7 @@ version = "1.1.6" # for semantic versioning - Major.Minor.Patch sequence
 # When a developer fixes a bug in that version, the next version release is named version 2.3.2.
 
 [modules]
-preprocessing = false
+preprocessing = true
 fitting = true
 # Define which modules you want to run. 
 # preprocessing generates GPFiles and SliceInfo files for biv model fitting directly from a DICOM directory
@@ -67,7 +67,7 @@ export_images = false
 # Below are the parameters used to configure preprocessing of DICOM files 
 # Skip these if you do not intend to run preprocessing
 [input_pp]
-source = "../../mnm-dataset/dicoms"
+source = "../../mnm-dataset/sources"
 # Define the directory containing raw dicoms. Files must be grouped into one folder per case
 # Default: "../../example/dicoms"
 
@@ -79,11 +79,11 @@ analyst_id = "analyst1"
 # Define the id of the analyst performing the preprocessing. Useful e.g. if view predictions need to be corrected
 # Default: "analyst1"
 
-processing = "../../sunnybrook/processing"
+processing = "../../mnm-dataset/processing"
 # Define the directory where processing files (including view predictions, segmentations) will be written
 # Default: "../../example/processing"
 
-states = "../../sunnybrook/states"
+states = "../../mnm-dataset/states"
 # Define the directory where view predictions and log files will be written out to
 # Default: "../../example/states"
 
@@ -112,11 +112,11 @@ smooth_landmarks = true
 # Default: true
 
 [output_pp]
-overwrite = false
+overwrite = true
 # Define to overwrite the processed folder and outputs of an already preprocessed case, if it exists
 # Default: false
 
-output_directory = "../../sunnybrook/guidepoints"
+output_directory = "../../mnm-dataset/guidepoints"
 # Define the directory where GPFiles will be created
 # If fitting and preprocessing are both enabled, this output_directory will also be the gp_directory used for fitting (see below)
 # Default: "../../example/guidepoints"
@@ -141,7 +141,7 @@ output_directory = "../../sunnybrook/guidepoints"
 
 # Below are the parameters used to configure biv model fitting 
 [input_fitting]
-gp_directory = "../../sunnybrook/guidepoints/default"
+gp_directory = "../../mnm-dataset/guidepoints/default"
 # Define the directory containing guidepoint files
 # If fitting and preprocessing are both enabled, this gp_directory will also be the output_directory used in preprocessing (see above)
 # default: "../../example/guidepoints/default"

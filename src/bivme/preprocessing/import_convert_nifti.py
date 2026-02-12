@@ -41,7 +41,8 @@ def nifti_to_dicom_orientation(affine):
     return origin, image_orientation, np.array([spacing_x, spacing_y])
 
 def preprocess_mnm2_case(case, src, dst):
-    case_dir = os.path.join(src, case)
+    print("src:", src)
+    case_dir = src
     print(f"processing mnm2 case: {case}")
     
     # Cartella di output specifica per il caso
@@ -59,8 +60,10 @@ def preprocess_mnm2_case(case, src, dst):
     }
     
     for filename_tmpl, view_name in file_map.items():
-        filename = filename_tmpl.format(case=case)
+        filename = filename_tmpl.format(case_name=case)
+        print(f"  Processing file: {filename} for view {view_name}")
         nifti_path = os.path.join(case_dir, filename)
+        print(f"  Looking for NIfTI at: {nifti_path}")
         if not os.path.exists(nifti_path):
             print(f"  Attenzione: {filename} non trovato per {case}")
             continue
