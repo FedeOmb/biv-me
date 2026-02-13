@@ -39,12 +39,9 @@ def init_nnUNetv2(model_folder, my_logger):
     )
     return predictor
 
-def predict_view(input_folder, output_folder, model, view, dataset, my_logger):
+def predict_view(view_input_folder, view_output_folder, model, view, dataset, my_logger):
     # Define the trained model to use (Specified by the Task)
     model_folder_name = os.path.join(model,"Segmentation/{}/nnUNetTrainer__nnUNetPlans__3d_fullres/".format(dataset))
-
-    view_input_folder = os.path.join(input_folder, view)
-    view_output_folder = os.path.join(output_folder, view)
         
     if len(os.listdir(view_input_folder)) > 0:
 
@@ -65,8 +62,9 @@ def predict_view(input_folder, output_folder, model, view, dataset, my_logger):
 def segment_views(dst, model, slice_info_df, my_logger):
     # define I/O parameters for nnUnet segmentation
     input_folder = os.path.join(dst, 'images')
+    print(f"Input folder for segmentation: {input_folder}")
     output_folder = os.path.join(dst, 'segmentations')
-
+    print(f"Output folder for segmentation: {output_folder}")
     if not os.path.exists(input_folder):
         os.makedirs(input_folder)
     else:
@@ -85,27 +83,30 @@ def segment_views(dst, model, slice_info_df, my_logger):
     views = ['SAX', '2ch', '3ch', '4ch', 'RVOT']
 
     for i, view in enumerate(views):
-        os.makedirs(os.path.join(input_folder, view), exist_ok=True)
-        os.makedirs(os.path.join(output_folder, view), exist_ok=True)
+        #os.makedirs(os.path.join(input_folder, view), exist_ok=True)
+        #os.makedirs(os.path.join(output_folder, view), exist_ok=True)
 
         if len(slice_info_df[slice_info_df['View'] == view]) == 0:
             my_logger.info(f'No {view} images found, skipping...')
             continue
         
-        my_logger.info(f'Writing {view} images to nifti files...')
+        if 'Img' in slice_info_df.columns:
+            my_logger.info(f'Writing {view} images to nifti files...')
 
-        view_rows = slice_info_df[slice_info_df['View'] == view]
-        for j, row in view_rows.iterrows():
-            slice_id = row['Slice ID']
-            pixel_array = row['Img']
-            pixel_spacing = row['Pixel Spacing']
-            rescale_factor = write_nifti(slice_id, pixel_array, pixel_spacing, input_folder, view)
+            view_rows = slice_info_df[slice_info_df['View'] == view]
+            for j, row in view_rows.iterrows():
+                slice_id = row['Slice ID']
+                pixel_array = row['Img']
+                pixel_spacing = row['Pixel Spacing']
+                rescale_factor = write_nifti(slice_id, pixel_array, pixel_spacing, input_folder, view)
 
-            if rescale_factor != 1:
-                # Update pixel spacing
-                idx = slice_info_df.index[slice_info_df['Slice ID'] == slice_id].tolist()[0]
-                # Use idx to update the original slice_info_df
-                slice_info_df.at[idx, 'Pixel Spacing'] = [pixel_spacing[0]*rescale_factor, pixel_spacing[1]*rescale_factor]
+                if rescale_factor != 1:
+                    # Update pixel spacing
+                    idx = slice_info_df.index[slice_info_df['Slice ID'] == slice_id].tolist()[0]
+                    # Use idx to update the original slice_info_df
+                    slice_info_df.at[idx, 'Pixel Spacing'] = [pixel_spacing[0]*rescale_factor, pixel_spacing[1]*rescale_factor]
+        else:
+            my_logger.info(f'Skipping NIfTI writing for {view} (images assumed present)...')
 
         my_logger.info(f'Segmenting {view} images...')
         

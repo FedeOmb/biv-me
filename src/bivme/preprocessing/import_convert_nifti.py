@@ -51,6 +51,7 @@ def preprocess_mnm2_case(case, src, dst):
     os.makedirs(images_output_dir, exist_ok=True)
     
     slice_info_data = []
+    slice_counter = 1
     
     # Mappatura file M&M2 -> Viste biv-me
     # M&M2 usa: LA_CINE (solitamente 4ch), SA_CINE (SAX)
@@ -93,7 +94,12 @@ def preprocess_mnm2_case(case, src, dst):
             
             # Creiamo un nome file univoco
             slice_filename = f"{view_name}_{z:02d}.nii.gz"
-            output_path = os.path.join(images_output_dir, slice_filename)
+            
+            # Create view subdirectory (required by segment_views)
+            view_dir = os.path.join(images_output_dir, view_name)
+            os.makedirs(view_dir, exist_ok=True)
+            
+            output_path = os.path.join(view_dir, slice_filename)
             
             # Salviamo il NIfTI (mantenendo l'affine originale per coerenza visiva nei viewer, 
             # ma i metadati nel txt saranno convertiti per biv-me)
@@ -106,16 +112,17 @@ def preprocess_mnm2_case(case, src, dst):
             # Nota: biv-me usa colonne specifiche. Adattiamo in base a GPDataSet.
             
             row = {
-                'Slice ID': slice_filename,
+                'Slice ID': slice_counter,
                 'Frames Per Slice': slice_data.shape[2],
-                'File': output_path,
+                'File': slice_filename,
                 'View': view_name,
-                'ImagePositionPatient': " ".join(map(str, origin)),
-                'ImageOrientationPatient': " ".join(map(str, orientation)),
-                'Pixel Spacing': " ".join(map(str, spacing)),
+                'ImagePositionPatient': origin,
+                'ImageOrientationPatient': orientation,
+                'Pixel Spacing': spacing,
 
             }
             slice_info_data.append(row)
+            slice_counter += 1
 
     # Creazione SliceInfoFile.txt
     num_phases = 0
@@ -143,9 +150,8 @@ def preprocess_mnm2_case(case, src, dst):
         # Solitamente biv-me usa un parsing custom o pandas. 
         # Salviamo in formato CSV con separatore tab o virgola.
         # Guardando il codice fornito, biv-me usa spesso pandas per leggere.
-        write_sliceinfofile(case_output_dir, slice_info_df) 
-        print(f"Creato file SliceInfoFIle.txt (num_phases={num_phases})")
-
+        #write_sliceinfofile(case_output_dir, slice_info_df) 
+        #print(f"Creato file SliceInfoFIle.txt (num_phases={num_phases})")
     return slice_info_df, num_phases
 
 def main():
