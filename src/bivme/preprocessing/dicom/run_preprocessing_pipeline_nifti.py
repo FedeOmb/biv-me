@@ -18,9 +18,9 @@ from bivme.preprocessing.dicom.correct_phase_mismatch import correct_phase_misma
 from bivme.preprocessing.dicom.generate_contours import generate_contours
 from bivme.preprocessing.dicom.export_guidepoints import export_guidepoints
 from bivme.plotting.plot_guidepoints import generate_html # for plotting guidepoints
+from bivme.preprocessing.import_convert_nifti import preprocess_mnm2_case
 
-
-def perform_preprocessing(case, config, mylogger):
+def perform_preprocessing_from_nifti(case, config, mylogger):
     # Path: src/bivme/preprocessing/dicom/models
     MODEL_DIR = Path(os.path.dirname(__file__)) / 'models'
 
@@ -72,22 +72,26 @@ def perform_preprocessing(case, config, mylogger):
     mylogger.info(f'Using device: {device}')
 
     ## Step 0: Pre-preprocessing (separate cines from non-cines)
-    mylogger.info(f'Finding cines...')
-    extract_cines(src, dst, mylogger)
+    # mylogger.info(f'Finding cines...')
+    # extract_cines(src, dst, mylogger)
 
-    src = os.path.join(dst, 'processed-dicoms') # Update source directory
-    mylogger.success(f'Pre-preprocessing complete. Cines extracted to {src}.')
+    # src = os.path.join(dst, 'processed-dicoms') # Update source directory
+    # mylogger.success(f'Pre-preprocessing complete. Cines extracted to {src}.')
 
     ## Step 1: View selection
-    slice_info_df, num_phases = select_views(case, src, dst, MODEL_DIR, states, config["view-selection"]["option"], 
-                                                            config["view-selection"]["correct_mode"], mylogger)
+    # slice_info_df, num_phases = select_views(case, src, dst, MODEL_DIR, states, config["view-selection"]["option"], config["view-selection"]["correct_mode"], mylogger)
 
-    mylogger.success(f'View selection complete.')
-    mylogger.info(f'Number of phases: {num_phases}')
+    # mylogger.success(f'View selection complete.')
+    # mylogger.info(f'Number of phases: {num_phases}')
+
+    ## step 0: preprocessing from nifti (for M&M2 dataset)
+    mylogger.info(f'Starting preprocessing from nifti...')
+    slice_info_df, num_phases = preprocess_mnm2_case(case, src, dst)
+    mylogger.success(f'Preprocessing from nifti complete')
 
     ## Step 2: Segmentation
     seg_start_time = time.time()
-    mylogger.info(f'Starting segmentation...')
+    mylogger.info(f'Starting segmentation from nifti...')
     segment_views(dst, MODEL_DIR, slice_info_df, mylogger) # TODO: Find a way to suppress nnUnet output
     seg_end_time = time.time()
     mylogger.success(f'Segmentation complete. Time taken: {seg_end_time-seg_start_time} seconds.')

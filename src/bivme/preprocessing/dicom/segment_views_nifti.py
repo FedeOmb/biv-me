@@ -1,0 +1,117 @@
+import os
+import shutil
+import torch
+
+# Set nnUNet environment variables so it doesn't scream at you with warnings
+os.environ['nnUNet_raw'] = '.'
+os.environ['nnUNet_preprocessed'] = '.'
+os.environ['nnUNet_results'] = '.'
+
+import nnunetv2 as nnunetv2
+from nnunetv2.inference.predict_from_raw_data import nnUNetPredictor
+
+from bivme.preprocessing.dicom.src.utils import write_nifti
+from bivme.preprocessing.dicom.src.utils import write_sliceinfofile
+
+def init_nnUNetv2(model_folder, my_logger):
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("cpu")  # nnUNetv2 does not support MPS, so we use CPU instead
+        my_logger.warning('MPS is available, but nnUNetv2 does not support it. Using CPU instead. This may be very slow!')
+    else:
+        device = torch.device("cpu")
+
+    predictor = nnUNetPredictor(tile_step_size=0.5,
+        use_gaussian=True,
+        use_mirroring=True,
+        perform_everything_on_device=True,
+        device=device,
+        verbose=False,
+        verbose_preprocessing=False,
+        allow_tqdm=True
+    )
+    
+    predictor.initialize_from_trained_model_folder(
+        model_folder,
+        use_folds=(0,),
+        checkpoint_name='checkpoint_final.pth',
+    )
+    return predictor
+
+def predict_view(view_input_folder, view_output_folder, model, view, dataset, my_logger):
+    # Define the trained model to use (Specified by the Task)
+    model_folder_name = os.path.join(model,"Segmentation/{}/nnUNetTrainer__nnUNetPlans__3d_fullres/".format(dataset))
+        
+    if len(os.listdir(view_input_folder)) > 0:
+
+        # Initialize nnUNet model
+        predictor = init_nnUNetv2(model_folder_name, my_logger)
+
+        # Make predictions
+        predictor.predict_from_files(
+            view_input_folder,
+            view_output_folder,
+            save_probabilities=False, overwrite=True, num_processes_preprocessing=2, 
+            num_processes_segmentation_export=2,
+            folder_with_segs_from_prev_stage=None, num_parts=1, part_id=0
+        )
+
+        my_logger.info(f'Done with {view}')
+
+def segment_views(dst, model, slice_info_df, my_logger):
+    # define I/O parameters for nnUnet segmentation
+    input_folder = os.path.join(dst, 'images')
+    print(f"Input folder for segmentation: {input_folder}")
+    output_folder = os.path.join(dst, 'segmentations')
+    print(f"Output folder for segmentation: {output_folder}")
+    if not os.path.exists(input_folder):
+        os.makedirs(input_folder)
+    else:
+        shutil.rmtree(input_folder)
+        os.makedirs(input_folder)
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    else:
+        shutil.rmtree(output_folder)
+        os.makedirs(output_folder)
+        
+    # nnunet models / tasks
+    datasets_3d = ["Dataset230_SAX_3D", "Dataset231_2ch_3D", "Dataset232_3ch_3D", "Dataset233_4ch_3D", "Dataset234_RVOT_3D"]
+
+    views = ['SAX', '2ch', '3ch', '4ch', 'RVOT']
+
+    for i, view in enumerate(views):
+        #os.makedirs(os.path.join(input_folder, view), exist_ok=True)
+        #os.makedirs(os.path.join(output_folder, view), exist_ok=True)
+
+        if len(slice_info_df[slice_info_df['View'] == view]) == 0:
+            my_logger.info(f'No {view} images found, skipping...')
+            continue
+        
+        if 'Img' in slice_info_df.columns:
+            my_logger.info(f'Writing {view} images to nifti files...')
+
+            view_rows = slice_info_df[slice_info_df['View'] == view]
+            for j, row in view_rows.iterrows():
+                slice_id = row['Slice ID']
+                pixel_array = row['Img']
+                pixel_spacing = row['Pixel Spacing']
+                rescale_factor = write_nifti(slice_id, pixel_array, pixel_spacing, input_folder, view)
+
+                if rescale_factor != 1:
+                    # Update pixel spacing
+                    idx = slice_info_df.index[slice_info_df['Slice ID'] == slice_id].tolist()[0]
+                    # Use idx to update the original slice_info_df
+                    slice_info_df.at[idx, 'Pixel Spacing'] = [pixel_spacing[0]*rescale_factor, pixel_spacing[1]*rescale_factor]
+        else:
+            my_logger.info(f'Skipping NIfTI writing for {view} (images assumed present)...')
+
+        my_logger.info(f'Segmenting {view} images...')
+        
+        dataset = datasets_3d[i]
+        predict_view(input_folder, output_folder, model, view, dataset, my_logger)
+
+    # Write updated slice info file with new pixel spacings
+    write_sliceinfofile(dst, slice_info_df)
