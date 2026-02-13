@@ -71,7 +71,7 @@ source = "../../dsb-kaggle/dicoms"
 # Define the directory containing raw dicoms. Files must be grouped into one folder per case
 # Default: "../../example/dicoms"
 
-batch_ID = "test"
+batch_ID = "test2"
 # Define the id of the batch you are processing. This will define the name of the folder that processed outputs will be written to
 # Default: "test"
 
@@ -112,7 +112,7 @@ smooth_landmarks = true
 # Default: true
 
 [output_pp]
-overwrite = true
+overwrite = false
 # Define to overwrite the processed folder and outputs of an already preprocessed case, if it exists
 # Default: false
 

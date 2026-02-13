@@ -388,16 +388,16 @@ def perform_fitting(folder: str,  config: dict, out_dir: str ="./results/", gp_s
                             if surface.name in config["output_fitting"]["output_meshes"]:
                                 control_mesh_mesh_data[surface.name] = surface.value
                                 if surface.name == "LV_ENDOCARDIAL" and config["output_fitting"]["closed_mesh"] == True:
-                                    control_mesh_mesh_data["MITRAL_VALVE"] = Surface.MITRAL_VALVE.value
-                                    control_mesh_mesh_data["AORTA_VALVE"] = Surface.AORTA_VALVE.value
+                                    control_mesh_mesh_data["MITRAL_VALVE"] = ControlMesh.MITRAL_VALVE.value
+                                    control_mesh_mesh_data["AORTA_VALVE"] = ControlMesh.AORTA_VALVE.value
                                 if surface.name == "EPICARDIAL" and config["output_fitting"]["closed_mesh"] == True:
-                                    control_mesh_mesh_data["PULMONARY_VALVE"] = Surface.PULMONARY_VALVE.value
-                                    control_mesh_mesh_data["TRICUSPID_VALVE"] = Surface.TRICUSPID_VALVE.value
-                                    control_mesh_mesh_data["MITRAL_VALVE"] = Surface.MITRAL_VALVE.value
-                                    control_mesh_mesh_data["AORTA_VALVE"] = Surface.AORTA_VALVE.value
+                                    control_mesh_mesh_data["PULMONARY_VALVE"] = ControlMesh.PULMONARY_VALVE.value
+                                    control_mesh_mesh_data["TRICUSPID_VALVE"] = ControlMesh.TRICUSPID_VALVE.value
+                                    control_mesh_mesh_data["MITRAL_VALVE"] = ControlMesh.MITRAL_VALVE.value
+                                    control_mesh_mesh_data["AORTA_VALVE"] = ControlMesh.AORTA_VALVE.value
                                 if surface.name == "RV_ENDOCARDIAL" and config["output_fitting"]["closed_mesh"] == True:
-                                    control_mesh_mesh_data["PULMONARY_VALVE"] = Surface.PULMONARY_VALVE.value
-                                    control_mesh_mesh_data["TRICUSPID_VALVE"] = Surface.TRICUSPID_VALVE.value
+                                    control_mesh_mesh_data["PULMONARY_VALVE"] = ControlMesh.PULMONARY_VALVE.value
+                                    control_mesh_mesh_data["TRICUSPID_VALVE"] = ControlMesh.TRICUSPID_VALVE.value
 
                                 control_mesh_meshes[surface.name] = control_mesh_mesh_data
 
