@@ -108,3 +108,35 @@ def export_to_obj(file_name: os.PathLike, vertices: np.ndarray, faces: np.ndarra
             for i in p:
                 f.write(" %d" % (i + 1))
             f.write("\n")
+
+## FUNZIONE AGGIUNTA PER VTK VOLUMETRICHE
+def write_vtk_volume(filename: str, vertices: np.ndarray, cells: np.ndarray) -> None:
+    """
+    Write a VTK volumetric mesh (UnstructuredGrid) for Hexahedral meshes.
+
+    Parameters
+    ----------
+    filename : The name of the output VTK file.
+    vertices : An array of shape (N, 3) representing the vertex coordinates.
+    cells : An array of shape (M, 8) representing the hexahedral connectivity.
+    """
+    if np.__version__ >= '1.20.0':
+        np.bool = np.bool_
+
+    n_cells = cells.shape[0]
+    n_points_per_cell = cells.shape[1] # Should be 8 for hex
+
+    # PyVista expects cells as [n_pts, id0, id1, ..., n_pts, id0, ...]
+    padding = np.full((n_cells, 1), n_points_per_cell, dtype=int)
+    cells_vtk = np.hstack((padding, cells)).flatten().astype(int)
+    
+    # VTK cell type for Hexahedron is 12
+    cell_type = np.full(n_cells, 12, dtype=np.uint8)
+    
+    grid = pv.UnstructuredGrid(cells_vtk, cell_type, vertices)
+    grid.save(filename, binary=False)
+
+def export_to_obj(file_name: os.PathLike, vertices: np.ndarray, faces: np.ndarray) -> None:
+    if '.obj' not in os.path.basename(file_name):
+        ValueError(' filenma should include .obj extension')
+

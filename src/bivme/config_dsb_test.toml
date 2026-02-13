@@ -193,7 +193,7 @@ convex_problem = 1e6
 transmural = 0.01
 
 [output_fitting]
-export_control_mesh = false
+export_control_mesh = true
 # Decide whether or not to save the coarse mesh. If true, the coarse mesh will be generated (format: mesh_format)
 # Default: false
 
