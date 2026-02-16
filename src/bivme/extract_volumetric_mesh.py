@@ -1,14 +1,15 @@
 import sys
 import os
+import argparse
 import numpy as np
 import pyvista as pv
 from pathlib import Path
 
-# Assicurati di essere nella root di biv-me o aggiungi il path
-#sys.path.append(os.path.join(os.path.dirname(__file__), 'bivme'))
-
 from bivme.fitting.BiventricularModel import BiventricularModel
 from bivme.meshing.hex_mesh_functions import extract_sudivided_hex_mesh
+from bivme.meshing.mesh import Mesh
+from bivme import MODEL_RESOURCE_DIR
+
 
 def export_volumetric_mesh(model_path, output_filename, subdivision_level=2):
     """
@@ -17,41 +18,31 @@ def export_volumetric_mesh(model_path, output_filename, subdivision_level=2):
     # 1. Inizializza il modello base (carica le matrici template)
     # Nota: BiventricularModel si aspetta che le risorse siano nella cartella corretta
     # Potresti dover aggiustare il path delle risorse se non lo trova
-    biv_model = BiventricularModel() 
+    biv_model = BiventricularModel(MODEL_RESOURCE_DIR, build_mode=True) 
     
     # 2. Carica i punti di controllo fittati dal file txt
     # Il file ha solitamente 388 righe (num nodi di controllo) e 3 colonne
     try:
-        fitted_control_points = np.loadtxt(model_path)
+        fitted_control_points = np.loadtxt(model_path, delimiter=',', skiprows=1, usecols=[0, 1, 2]).astype(np.float16)
     except Exception as e:
         print(f"Errore caricamento file {model_path}: {e}")
         return
 
     # Aggiorna il modello con i nuovi punti
-    biv_model.control_mesh = fitted_control_points
+    #biv_model.control_mesh = fitted_control_points
+    biv_model.update_control_mesh(fitted_control_points)
     
-    # 3. Genera la mesh esaedrica suddivisa
-    # extract_sudivided_hex_mesh richiede:
-    # - control_mesh (il nostro oggetto)
-    # - new_nodes_position (i nodi fittati espansi - qui usiamo quelli del modello)
-    # - xi_coords (coordinate locali)
-    # - node_elem_map (mappa nodi-elementi)
-    
-    # Nota: BiventricularModel ha internamente et_pos, et_vertex_xi, et_vertex_element_num
-    # che vengono ricalcolati quando si aggiorna la control mesh? 
-    # In biv-me potrebbe essere necessario ricalcolare le superfici prima, 
-    # ma per la mesh HEX pura, usiamo la funzione di suddivisione diretta.
-    
+    # 3. Genera la mesh esaedrica suddivisa  
     # La funzione 'extract_sudivided_hex_mesh' in hex_mesh_functions.py prende:
     # control_mesh, new_nodes_position, xi_coords, node_elem_map
-    
-    # Hack: passiamo direttamente i dati che la funzione si aspetta
-    # La funzione interna farà la suddivisione lineare degli esaedri
-    
+    control_mesh_obj = Mesh("control_mesh")
+    control_mesh_obj.set_nodes(biv_model.control_mesh)
+    control_mesh_obj.set_elements(biv_model.control_et_indices)
+
     print("Generazione mesh volumetrica...")
     # Usiamo i dati "embedded" del modello per guidare la suddivisione
     hex_mesh = extract_sudivided_hex_mesh(
-        biv_model, 
+        control_mesh_obj,  # Mesh di controllo (nodi + elementi)
         biv_model.et_pos,  # Posizioni superficiali (guidano la forma)
         biv_model.et_vertex_xi, 
         biv_model.et_vertex_element_num
@@ -62,8 +53,12 @@ def export_volumetric_mesh(model_path, output_filename, subdivision_level=2):
     
     # 4. Esportazione in VTK (Unstructured Grid)
     points = hex_mesh.nodes
-    elements = hex_mesh.elements # Questi sono indici a 8 nodi (esaedri)
+    elements = hex_mesh.elements.copy() # Questi sono indici a 8 nodi (esaedri)
     
+    ## Correzione ordinamento indici per VTK
+    vtk_permutation = [0,1,3,2,4,5,7,6]
+    elements = elements[:, vtk_permutation]
+
     # Creazione griglia PyVista
     # Cella tipo 12 = VTK_HEXAHEDRON
     cell_type = np.full(elements.shape[0], 12, dtype=np.uint8)
@@ -79,10 +74,18 @@ def export_volumetric_mesh(model_path, output_filename, subdivision_level=2):
     print(f"Mesh volumetrica salvata in: {output_filename}")
 
 if __name__ == "__main__":
-    input_model_file = "example/fitted-models/default/patient1/patient1_model_frame_000.txt"
-    output_vtk = "patient1_volumetric_ED.vtk"
+
+    parser = argparse.ArgumentParser(description='Create volumetric mesh from fitted model')
+    parser.add_argument('--input_model_path', type=str,
+                        help='complete path to the fitted model file (e.g., 502_model_frame_000.txt)')
+    parser.add_argument('--output_vtk_path', type=str,
+                        help='complete path to the output VTK file (e.g., 502_volumetric_mesh_frame_000.vtk)')
+    args = parser.parse_args()
+
+    #input_model_file = "../output/502/502_model_frame_000.txt"
+    #output_vtk = "../output/502/502_volumetric_mesh_frame_000.vtk"
     
-    if os.path.exists(input_model_file):
-        export_volumetric_mesh(input_model_file, output_vtk)
+    if os.path.exists(args.input_model_path):
+        export_volumetric_mesh(args.input_model_path, args.output_vtk_path)
     else:
         print("File di input non trovato. Esegui prima il fitting con biv-me.")

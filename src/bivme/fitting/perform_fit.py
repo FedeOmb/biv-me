@@ -467,9 +467,9 @@ def perform_fitting(folder: str,  config: dict, out_dir: str ="./results/", gp_s
                                 write_vtk_surface(str(mesh_path), vertices, faces_mapped)
                                 my_logger.success(f"{case}_{key}_{num:03}_control_mesh.vtk successfully saved to {output_folder_vtk}")
                                 ##AGGIUNTO EXPORT MESH VOLUMETRICA
-                                mesh_path_vol = Path(output_folder_vtk, f"{case}_control_mesh_volumetric_{num:03}.vtk")
-                                write_vtk_volume(str(mesh_path_vol), biventricular_model.control_mesh, biventricular_model.control_et_indices)
-                                my_logger.success(f"Volumetric control mesh saved to {mesh_path_vol}")
+                                #mesh_path_vol = Path(output_folder_vtk, f"{case}_control_mesh_volumetric_{num:03}.vtk")
+                                #write_vtk_volume(str(mesh_path_vol), biventricular_model.control_mesh, biventricular_model.control_et_indices)
+                                #my_logger.success(f"Volumetric control mesh saved to {mesh_path_vol}")
 
                             elif output_format == ".obj":
                                 output_folder_obj = Path(output_folder, f"obj{gp_suffix}")
