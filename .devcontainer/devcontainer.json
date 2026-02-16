@@ -27,7 +27,24 @@
 				"ms-python.vscode-pylance"
 			]
 		}
+	},
+
+	"containerEnv": {
+		"DISPLAY": ":0",
+		"WAYLAND_DISPLAY": "wayland-0",
+		"XDG_RUNTIME_DIR": "/tmp/runtime-vscode"
 	}
+
+	// 2. Monta i socket grafici di WSLg dentro il container
+	//"runArgs": [
+	//	"-v", "/tmp/.X11-unix:/tmp/.X11-unix",
+	//	"-v", "/mnt/wslg:/mnt/wslg"
+	//]
+
+//	"mounts": [
+//		"source=/mnt/wslg,target=/mnt/wslg,type=bind,consistency=cached",
+//		"source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind,consistency=cached"
+//	]
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"

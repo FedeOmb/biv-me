@@ -13,6 +13,11 @@ RUN if [ -f "/tmp/conda-tmp/environment.yml" ]; then umask 0002 && /opt/conda/bi
 RUN apt-get update && apt-get install -y \
     build-essential \
     gcc \
+    libgl1 \
+    libxext6 \
+    libxrender1 \
+    python3-tk \
+    x11-apps \
     && rm -rf /var/lib/apt/lists/*
 
 # [Optional] Uncomment this section to install additional OS packages.
