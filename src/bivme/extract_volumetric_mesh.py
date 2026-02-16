@@ -91,9 +91,9 @@ def export_volumetric_mesh(model_path, output_filename, subdivision_level=2):
     # PyVista richiede che la lista celle inizi con il numero di punti per cella (8)
     cells = np.hstack((np.full((elements.shape[0], 1), 8), elements))
     cells = cells.flatten().astype(np.int32) # Appiattisci per formato VTK
-    grid.point_data["SurfaceTag"] = tags    
     grid = pv.UnstructuredGrid(cells, cell_type, points)
-    
+    grid.point_data["SurfaceTag"] = tags    
+   
     # Salvataggio
     grid.save(output_filename)
     print(f"Mesh volumetrica salvata in: {output_filename}")

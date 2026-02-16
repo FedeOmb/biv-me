@@ -7,7 +7,7 @@ version = "1.1.6" # for semantic versioning - Major.Minor.Patch sequence
 
 [modules]
 preprocessing = true
-fitting = false
+fitting = true
 # Define which modules you want to run. 
 # preprocessing generates GPFiles and SliceInfo files for biv model fitting directly from a DICOM directory
 # fitting carries out biv model fitting on a set of GPFiles and SliceInfo files
@@ -71,7 +71,7 @@ source = "../../sunnybrook/dicoms"
 # Define the directory containing raw dicoms. Files must be grouped into one folder per case
 # Default: "../../example/dicoms"
 
-batch_ID = "test"
+batch_ID = "testsb1"
 # Define the id of the batch you are processing. This will define the name of the folder that processed outputs will be written to
 # Default: "test"
 
