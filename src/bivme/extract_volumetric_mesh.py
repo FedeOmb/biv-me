@@ -4,6 +4,7 @@ import argparse
 import numpy as np
 import pyvista as pv
 from pathlib import Path
+from scipy.spatial import cKDTree
 
 from bivme.fitting.BiventricularModel import BiventricularModel
 from bivme.meshing.hex_mesh_functions import extract_sudivided_hex_mesh
@@ -50,6 +51,30 @@ def export_volumetric_mesh(model_path, output_filename, subdivision_level=2):
     
     # Se vuoi aumentare la risoluzione, hex_mesh_functions ha opzioni per suddividere ancora
     # sub_hex_mesh = hex_mesh.subdivide_linear_interpolation_hex(subdivision_level)
+  
+    # 4. Assign Tags
+    print("Assigning surface tags...")
+    tree = cKDTree(hex_mesh.nodes)
+    tags = np.zeros(hex_mesh.nodes.shape[0], dtype=int)
+    
+    # Map indices from BiventricularModel to Tags
+    # 1: LV Endo, 2: RV Endo (Septum+Freewall), 3: Epi, 4: Base/Valves
+    surface_map = {
+        0: 1, # LV_ENDOCARDIAL
+        1: 2, # RV_SEPTUM
+        2: 2, # RV_FREEWALL
+        3: 3, # EPICARDIAL
+        4: 4, 5: 4, 6: 4, 7: 4, 8: 4 # Valves/Base
+    }
+    
+    for surf_idx, tag in surface_map.items():
+        start, end = biv_model.et_vertex_start_end[surf_idx]
+        surf_points = biv_model.et_pos[start:end+1]
+        
+        # Find corresponding nodes in hex_mesh
+        dists, ids = tree.query(surf_points)
+        mask = dists < 1e-4 # Tolerance for matching
+        tags[ids[mask]] = tag
     
     # 4. Esportazione in VTK (Unstructured Grid)
     points = hex_mesh.nodes
@@ -66,7 +91,7 @@ def export_volumetric_mesh(model_path, output_filename, subdivision_level=2):
     # PyVista richiede che la lista celle inizi con il numero di punti per cella (8)
     cells = np.hstack((np.full((elements.shape[0], 1), 8), elements))
     cells = cells.flatten().astype(np.int32) # Appiattisci per formato VTK
-    
+    grid.point_data["SurfaceTag"] = tags    
     grid = pv.UnstructuredGrid(cells, cell_type, points)
     
     # Salvataggio
