@@ -184,6 +184,8 @@ src/pyezzi/pyezzi
 
 # Directories potentially created by running example code
 src/output
+output/
+output-sb
 example/processing
 example/states
 example/guidepoints/test
