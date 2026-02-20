@@ -71,7 +71,7 @@ source = "../../sunnybrook/dicoms"
 # Define the directory containing raw dicoms. Files must be grouped into one folder per case
 # Default: "../../example/dicoms"
 
-batch_ID = "testsb2"
+batch_ID = "testsb3"
 # Define the id of the batch you are processing. This will define the name of the folder that processed outputs will be written to
 # Default: "test"
 
@@ -155,7 +155,7 @@ si_suffix = ""
 # Default: ""
 
 [breathhold_correction]
-shifting = "derived_from_ed" # derived_from_ed, average_all_frames, none
+shifting = "average_all_frames" # derived_from_ed, average_all_frames, none
 # Define the method used for breathhold misregistration correction.
 # Allowed values:
 # * "derived_from_ed"      : The correction is calculated at ED only and propagated to all the frames

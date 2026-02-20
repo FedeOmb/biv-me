@@ -95,7 +95,7 @@ option = "default"
 # * "load" : View predictions are loaded from the states folder, if they exist
 # Default: "default"
 
-correct_mode = "adaptive"
+correct_mode = "automatic"
 # Define whether you would like to manually review and correct view predictions. "adaptive" is generally recommended to avoid downstream errors.
 # * "manual": will launch a GUI after completing view predictions to allow you to correct any mispredictions
 # * "adaptive": will only launch a GUI if there are any poor predictions or missing views
@@ -193,7 +193,7 @@ convex_problem = 1e6
 transmural = 0.01
 
 [output_fitting]
-export_control_mesh = true
+export_control_mesh = false
 # Decide whether or not to save the coarse mesh. If true, the coarse mesh will be generated (format: mesh_format)
 # Default: false
 

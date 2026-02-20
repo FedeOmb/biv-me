@@ -12,7 +12,7 @@ from bivme.meshing.mesh import Mesh
 from bivme import MODEL_RESOURCE_DIR
 
 
-def export_volumetric_mesh(model_path, output_filename, subdivision_level=2):
+def export_volumetric_mesh(model_path, output_filename, subdivision_level=2, thetrahedral=True):
     """
     Carica un modello fittato biv-me ed esporta la mesh volumetrica esaedrica.
     """
@@ -48,9 +48,11 @@ def export_volumetric_mesh(model_path, output_filename, subdivision_level=2):
         biv_model.et_vertex_xi, 
         biv_model.et_vertex_element_num
     )
-    
-    # Se vuoi aumentare la risoluzione, hex_mesh_functions ha opzioni per suddividere ancora
-    # sub_hex_mesh = hex_mesh.subdivide_linear_interpolation_hex(subdivision_level)
+    if subdivision_level > 0:
+        # Se vuoi aumentare la risoluzione, hex_mesh_functions ha opzioni per suddividere ancora
+        print(f"Aumento risoluzione mesh (subdivision level {subdivision_level})...")
+        sub_hex_mesh = hex_mesh.subdivide_linear_interpolation_hex(subdivision_level)
+        hex_mesh = sub_hex_mesh
   
     # 4. Assign Tags
     print("Assigning surface tags...")
@@ -92,8 +94,12 @@ def export_volumetric_mesh(model_path, output_filename, subdivision_level=2):
     cells = np.hstack((np.full((elements.shape[0], 1), 8), elements))
     cells = cells.flatten().astype(np.int32) # Appiattisci per formato VTK
     grid = pv.UnstructuredGrid(cells, cell_type, points)
-    grid.point_data["SurfaceTag"] = tags    
-   
+
+    if thetrahedral:
+        print("Converting to tetrahedral mesh...")
+        grid = grid.triangulate()
+    
+    grid.point_data["SurfaceTag"] = tags
     # Salvataggio
     grid.save(output_filename)
     print(f"Mesh volumetrica salvata in: {output_filename}")
@@ -107,10 +113,11 @@ if __name__ == "__main__":
                         help='complete path to the output VTK file (e.g., 502_volumetric_mesh_frame_000.vtk)')
     args = parser.parse_args()
 
-    #input_model_file = "../output/502/502_model_frame_000.txt"
-    #output_vtk = "../output/502/502_volumetric_mesh_frame_000.vtk"
+    if not args.input_model_path or not args.output_vtk_path:
+        args.input_model_path = "../output/503/503_model_frame_000.txt"
+        args.output_vtk_path = "../output/503/503_volumetric_mesh_frame0_tetra_sub2.vtk"
     
     if os.path.exists(args.input_model_path):
-        export_volumetric_mesh(args.input_model_path, args.output_vtk_path)
+        export_volumetric_mesh(args.input_model_path, args.output_vtk_path, subdivision_level=2)
     else:
         print("File di input non trovato. Esegui prima il fitting con biv-me.")
