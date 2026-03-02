@@ -3,6 +3,7 @@ import os
 import argparse
 import numpy as np
 import pyvista as pv
+import vtk
 from pathlib import Path
 from scipy.spatial import cKDTree
 
@@ -101,7 +102,13 @@ def export_volumetric_mesh(model_path, output_filename, subdivision_level=2, the
     
     grid.point_data["SurfaceTag"] = tags
     # Salvataggio
-    grid.save(output_filename)
+    #grid.save(output_filename)
+    writer = vtk.vtkUnstructuredGridWriter()
+    writer.SetInputData(grid)
+    writer.SetFileName(output_filename)
+    writer.SetFileVersion(42)       # forza versione vtk 4.2
+    writer.SetFileTypeToASCII()
+    writer.Write()    
     print(f"Mesh volumetrica salvata in: {output_filename}")
 
 if __name__ == "__main__":
