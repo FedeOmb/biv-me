@@ -121,10 +121,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if not args.input_model_path or not args.output_vtk_path:
-        args.input_model_path = "../output/503/503_model_frame_000.txt"
-        args.output_vtk_path = "../output/503/503_volumetric_mesh_frame0_tetra_sub2.vtk"
+        args.input_model_path = "../output/502/502_model_frame_000.txt"
+        args.output_vtk_path = "../output/502/502_volumetric_mesh_frame0_tetra_vtk42.vtk"
     
     if os.path.exists(args.input_model_path):
-        export_volumetric_mesh(args.input_model_path, args.output_vtk_path, subdivision_level=2)
+        export_volumetric_mesh(args.input_model_path, args.output_vtk_path, subdivision_level=0)
     else:
         print("File di input non trovato. Esegui prima il fitting con biv-me.")

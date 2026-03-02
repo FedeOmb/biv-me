@@ -1,0 +1,11 @@
+#verifica la qualità della mesh 0=migliore 1=peggiore
+meshtool query quality -msh=502_volumetric_mesh_frame0_tetra_vtk42 -ifmt=vtk
+
+#pulisce la mesh secondo un parametro di threshold
+meshtool clean quality -msh=502_volumetric_mesh_frame0_tetra_vtk42 -ifmt=vtk -ofmt=vtk -outmsh=502_volumetric_mesh_tetra_clean -thr=0.7
+
+#restituisce le statistiche sulla lunghezza degli edge (risoluzione spaziale)
+meshtool query edges -msh=502_volumetric_mesh_tetra_clean -ifmt=vtk
+
+#fa il resample della mesh volumetrica a un determinato val medio degli edge
+meshtool resample mesh -msh=502_volumetric_mesh_tetra_clean -ifmt=vtk -avrg=1.5 -outmsh=502_volumetric_mesh_tetra_resample1-5 -ofmt=vtk
