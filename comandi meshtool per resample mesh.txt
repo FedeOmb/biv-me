@@ -9,3 +9,6 @@ meshtool query edges -msh=502_volumetric_mesh_tetra_clean -ifmt=vtk
 
 #fa il resample della mesh volumetrica a un determinato val medio degli edge
 meshtool resample mesh -msh=502_volumetric_mesh_tetra_clean -ifmt=vtk -avrg=1.5 -outmsh=502_volumetric_mesh_tetra_resample1-5 -ofmt=vtk
+
+#comando per scala mesh da cm a um
+meshtool transform -imsh=503kaggle500cm -ifmt=vtk -omsh=503kaggle500um -ofmt=vtk -scale=10000
