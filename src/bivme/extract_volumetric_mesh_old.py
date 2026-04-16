@@ -4,8 +4,6 @@ import argparse
 import numpy as np
 import pyvista as pv
 import vtk
-import tetgen
-import pymeshfix
 from pathlib import Path
 from scipy.spatial import cKDTree
 
@@ -27,8 +25,7 @@ def export_volumetric_mesh(model_path, output_filename, subdivision_level=0, the
     # 2. Carica i punti di controllo fittati dal file txt
     # Il file ha solitamente 388 righe (num nodi di controllo) e 3 colonne
     try:
-        print(f"Caricamento fitting points da: {model_path}")
-        fitted_control_points = np.loadtxt(model_path, delimiter=',', skiprows=1, usecols=[0, 1, 2]).astype(np.float32)
+        fitted_control_points = np.loadtxt(model_path, delimiter=',', skiprows=1, usecols=[0, 1, 2]).astype(np.float16)
     except Exception as e:
         print(f"Errore caricamento file {model_path}: {e}")
         return
@@ -100,37 +97,10 @@ def export_volumetric_mesh(model_path, output_filename, subdivision_level=0, the
     grid = pv.UnstructuredGrid(cells, cell_type, points)
 
     if thetrahedral:
-        print("Converting to tetrahedral mesh using tetgen...")
-        # Step 1: estrai la superficie esterna come PolyData triangolare
-        surface = grid.extract_surface()
-        surface = surface.triangulate()          # assicura che tutte le facce siano triangoli
-        surface = surface.clean(tolerance=1e-6)                # rimuove punti duplicati/degeneri
-       
-        # pymeshfix per rimuovere self-intersections
-        print("Riparazione self-intersections con pymeshfix...")
-        meshfix = pymeshfix.MeshFix(surface)
-        meshfix.repair(joincomp=True, remove_smallest_components=False)
-        surface = meshfix.mesh.clean(tolerance=1e-6)
-
-        # Step 2: verifica che la superficie sia watertight (chiusa) — requisito di TetGen
-        edges = surface.extract_feature_edges(
-            boundary_edges=True,
-            non_manifold_edges=True,
-            feature_edges=False,
-            manifold_edges=False
-        )
-        if edges.n_cells > 0:
-            print(f"ATTENZIONE: superficie non chiusa, {edges.n_cells} spigoli aperti")
-            surface = surface.fill_holes(hole_size=50)  # tenta riparazione automatica
-            surface = surface.clean(tolerance=1e-6)  # pulisce eventuali nuovi punti/degeneri
-
-        # Step 3: tetrahedralizza con TetGen
-
-        tet = tetgen.TetGen(surface)
-        tet.tetrahedralize(order=1, mindihedral=20, minratio=1.5)
-        grid = tet.grid   # pv.UnstructuredGrid tetraedrica finale
-            
-    #grid.point_data["SurfaceTag"] = tags
+        print("Converting to tetrahedral mesh...")
+        grid = grid.triangulate()
+    
+    grid.point_data["SurfaceTag"] = tags
     # Salvataggio
     #grid.save(output_filename)
     writer = vtk.vtkUnstructuredGridWriter()
@@ -151,8 +121,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if not args.input_model_path or not args.output_vtk_path:
-        args.input_model_path = "../../output-sb/sb501/sb501_model_frame_000.txt"
-        args.output_vtk_path = "../../output-sb/sb501/sb501_volmesh_tetratetgen.vtk"
+        args.input_model_path = "../../output-sb/sb301/sb301_model_frame_000.txt"
+        args.output_vtk_path = "../../output-sb/sb301/sb301_volmesh_tetravtk42.vtk"
     
     if os.path.exists(args.input_model_path):
         export_volumetric_mesh(args.input_model_path, args.output_vtk_path, subdivision_level=0, thetrahedral=True)
