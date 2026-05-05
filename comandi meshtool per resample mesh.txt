@@ -12,3 +12,6 @@ meshtool resample mesh -msh=502_volumetric_mesh_tetra_clean -ifmt=vtk -avrg=1.5 
 
 #comando per scala mesh da cm a um
 meshtool transform -imsh=503kaggle500cm -ifmt=vtk -omsh=503kaggle500um -ofmt=vtk -scale=10000
+
+#comando meshtool per generare mesh volumetrica a partire da superfici bivme
+meshtool generate mesh -surf=sb3701_EPICARDIAL_000_vtk42.vtk,sb3701_LV_ENDOCARDIAL_000_vtk42.vtk,sb3701_RV_ENDOCARDIAL_000_vtk42.vtk -ins_tag=3,2,1 -outmsh=sb3701_voltetra_meshtool -scale=1.0 -ofmt=vtk_bin

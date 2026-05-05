@@ -6,155 +6,95 @@ import pyvista as pv
 import vtk
 import tetgen
 import pymeshfix
-from pathlib import Path
-from scipy.spatial import cKDTree
-
-from bivme.fitting.BiventricularModel import BiventricularModel
-from bivme.meshing.hex_mesh_functions import extract_sudivided_hex_mesh
-from bivme.meshing.mesh import Mesh
+import subprocess
 from bivme import MODEL_RESOURCE_DIR
 
-
-def export_volumetric_mesh(model_path, output_filename, subdivision_level=0, thetrahedral=True):
-    """
-    Carica un modello fittato biv-me ed esporta la mesh volumetrica esaedrica.
-    """
-    # 1. Inizializza il modello base (carica le matrici template)
-    # Nota: BiventricularModel si aspetta che le risorse siano nella cartella corretta
-    # Potresti dover aggiustare il path delle risorse se non lo trova
-    biv_model = BiventricularModel(MODEL_RESOURCE_DIR, build_mode=True) 
-    
-    # 2. Carica i punti di controllo fittati dal file txt
-    # Il file ha solitamente 388 righe (num nodi di controllo) e 3 colonne
-    try:
-        print(f"Caricamento fitting points da: {model_path}")
-        fitted_control_points = np.loadtxt(model_path, delimiter=',', skiprows=1, usecols=[0, 1, 2]).astype(np.float32)
-    except Exception as e:
-        print(f"Errore caricamento file {model_path}: {e}")
-        return
-
-    # Aggiorna il modello con i nuovi punti
-    #biv_model.control_mesh = fitted_control_points
-    biv_model.update_control_mesh(fitted_control_points)
-    
-    # 3. Genera la mesh esaedrica suddivisa  
-    # La funzione 'extract_sudivided_hex_mesh' in hex_mesh_functions.py prende:
-    # control_mesh, new_nodes_position, xi_coords, node_elem_map
-    control_mesh_obj = Mesh("control_mesh")
-    control_mesh_obj.set_nodes(biv_model.control_mesh)
-    control_mesh_obj.set_elements(biv_model.control_et_indices)
-
-    print("Generazione mesh volumetrica...")
-    # Usiamo i dati "embedded" del modello per guidare la suddivisione
-    hex_mesh = extract_sudivided_hex_mesh(
-        control_mesh_obj,  # Mesh di controllo (nodi + elementi)
-        biv_model.et_pos,  # Posizioni superficiali (guidano la forma)
-        biv_model.et_vertex_xi, 
-        biv_model.et_vertex_element_num
-    )
-    if subdivision_level > 0:
-        # Se vuoi aumentare la risoluzione, hex_mesh_functions ha opzioni per suddividere ancora
-        print(f"Aumento risoluzione mesh (subdivision level {subdivision_level})...")
-        sub_hex_mesh = hex_mesh.subdivide_linear_interpolation_hex(subdivision_level)
-        hex_mesh = sub_hex_mesh
-  
-    # 4. Assign Tags
-    print("Assigning surface tags...")
-    tree = cKDTree(hex_mesh.nodes)
-    tags = np.zeros(hex_mesh.nodes.shape[0], dtype=int)
-    
-    # Map indices from BiventricularModel to Tags
-    # 1: LV Endo, 2: RV Endo (Septum+Freewall), 3: Epi, 4: Base/Valves
-    surface_map = {
-        0: 1, # LV_ENDOCARDIAL
-        1: 2, # RV_SEPTUM
-        2: 2, # RV_FREEWALL
-        3: 3, # EPICARDIAL
-        4: 4, 5: 4, 6: 4, 7: 4, 8: 4 # Valves/Base
-    }
-    
-    for surf_idx, tag in surface_map.items():
-        start, end = biv_model.et_vertex_start_end[surf_idx]
-        surf_points = biv_model.et_pos[start:end+1]
-        
-        # Find corresponding nodes in hex_mesh
-        dists, ids = tree.query(surf_points)
-        mask = dists < 1e-4 # Tolerance for matching
-        tags[ids[mask]] = tag
-    
-    # 4. Esportazione in VTK (Unstructured Grid)
-    points = hex_mesh.nodes
-    elements = hex_mesh.elements.copy() # Questi sono indici a 8 nodi (esaedri)
-    
-    ## Correzione ordinamento indici per VTK
-    vtk_permutation = [0,1,3,2,4,5,7,6]
-    elements = elements[:, vtk_permutation]
-
-    # Creazione griglia PyVista
-    # Cella tipo 12 = VTK_HEXAHEDRON
-    cell_type = np.full(elements.shape[0], 12, dtype=np.uint8)
-    
-    # PyVista richiede che la lista celle inizi con il numero di punti per cella (8)
-    cells = np.hstack((np.full((elements.shape[0], 1), 8), elements))
-    cells = cells.flatten().astype(np.int32) # Appiattisci per formato VTK
-    grid = pv.UnstructuredGrid(cells, cell_type, points)
-
-    if thetrahedral:
-        print("Converting to tetrahedral mesh using tetgen...")
-        # Step 1: estrai la superficie esterna come PolyData triangolare
-        surface = grid.extract_surface()
-        surface = surface.triangulate()          # assicura che tutte le facce siano triangoli
-        surface = surface.clean(tolerance=1e-6)                # rimuove punti duplicati/degeneri
-       
-        # pymeshfix per rimuovere self-intersections
-        print("Riparazione self-intersections con pymeshfix...")
-        meshfix = pymeshfix.MeshFix(surface)
-        meshfix.repair(joincomp=True, remove_smallest_components=False)
-        surface = meshfix.mesh.clean(tolerance=1e-6)
-
-        # Step 2: verifica che la superficie sia watertight (chiusa) — requisito di TetGen
-        edges = surface.extract_feature_edges(
-            boundary_edges=True,
-            non_manifold_edges=True,
-            feature_edges=False,
-            manifold_edges=False
-        )
-        if edges.n_cells > 0:
-            print(f"ATTENZIONE: superficie non chiusa, {edges.n_cells} spigoli aperti")
-            surface = surface.fill_holes(hole_size=50)  # tenta riparazione automatica
-            surface = surface.clean(tolerance=1e-6)  # pulisce eventuali nuovi punti/degeneri
-
-        # Step 3: tetrahedralizza con TetGen
-
-        tet = tetgen.TetGen(surface)
-        tet.tetrahedralize(order=1, mindihedral=20, minratio=1.5)
-        grid = tet.grid   # pv.UnstructuredGrid tetraedrica finale
-            
-    #grid.point_data["SurfaceTag"] = tags
+def fix_and_convert_vtk42(input_path, output_path):
     # Salvataggio
-    #grid.save(output_filename)
-    writer = vtk.vtkUnstructuredGridWriter()
-    writer.SetInputData(grid)
-    writer.SetFileName(output_filename)
+    print(f"Input surface mesh: {input_path}")
+    surface = pv.read(input_path)
+
+    surface = surface.triangulate()
+    surface = surface.clean(tolerance=1e-6)
+
+    print(f"Verifica e riparazione self-intersections per {os.path.basename(input_path)}...")
+    meshfix = pymeshfix.MeshFix(surface)
+    meshfix.repair(joincomp=True, remove_smallest_components=False)
+    surface = meshfix.mesh.clean(tolerance=1e-6)
+
+    edges = surface.extract_feature_edges(boundary_edges=True, non_manifold_edges=True)
+    if edges.n_cells > 0:
+        print(f"ATTENZIONE: Trovati {edges.n_cells} spigoli aperti, tento la chiusura...")
+        surface = surface.fill_holes(hole_size=50)
+        surface = surface.clean(tolerance=1e-6)
+
+    writer = vtk.vtkPolyDataWriter()
+    writer.SetInputData(surface)
+    writer.SetFileName(output_path)
     writer.SetFileVersion(42)       # forza versione vtk 4.2
     writer.SetFileTypeToASCII()
     writer.Write()    
-    print(f"Mesh volumetrica salvata in: {output_filename}")
+    print(f"Mesh superficie convertita in vtk 42 per meshtool: {output_path}")
+
+
+def export_volumetric_mesh_meshtool(bivme_output_folder, casename, frame_num, output_filename):
+
+    surface_filenames = [
+        f"{casename}_EPICARDIAL_{frame_num:03d}",
+        f"{casename}_LV_ENDOCARDIAL_{frame_num:03d}",
+        f"{casename}_RV_ENDOCARDIAL_{frame_num:03d}"
+    ]
+    output_vtk42_paths = []
+
+    for sur in surface_filenames:
+        input_sur_path = os.path.join(bivme_output_folder, casename, 'vtk', sur+'.vtk')
+        if not os.path.exists(input_sur_path):
+            print(f"File di superficie non trovato: {input_sur_path}")
+            return
+        
+        output_sur_path = os.path.join(bivme_output_folder, casename, 'vtk', sur + '_vtk42.vtk')
+        fix_and_convert_vtk42(input_sur_path, output_sur_path)
+        output_vtk42_paths.append(output_sur_path)
+
+    print("Generazione mesh volumetrica con meshtool...")
+    surf_arg = ",".join(output_vtk42_paths)
+    ins_tag_arg = "3,2,1"
+    output_vol_path = os.path.join(bivme_output_folder, casename, 'volumetric', output_filename)
+    cmd = [
+        "meshtool", "generate", "mesh",
+        f"-surf={surf_arg}",
+        f"-ins_tag={ins_tag_arg}",
+        f"-outmsh={output_vol_path}",
+        "-scale=1.0",
+        "-ofmt=vtk_bin"
+    ]
+    
+    print(f"Esecuzione comando: {' '.join(cmd)}")
+    
+    try:
+        subprocess.run(cmd, check=True)
+        print(f"Mesh volumetrica creata con successo in: {output_vol_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Errore durante l'esecuzione di meshtool: {e}")
+    except FileNotFoundError:
+        print("Errore: meshtool non trovato")
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Create volumetric mesh from fitted model')
-    parser.add_argument('--input_model_path', type=str,
-                        help='complete path to the fitted model file (e.g., 502_model_frame_000.txt)')
-    parser.add_argument('--output_vtk_path', type=str,
-                        help='complete path to the output VTK file (e.g., 502_volumetric_mesh_frame_000.vtk)')
+    parser = argparse.ArgumentParser(description='Create volumetric mesh from biv-me surfaces using meshtool')
+    parser.add_argument('--bivme_output_folder', type=str, required=True,
+                        help='Cartella di output principale di biv-me (es. ../../output-sb)')
+    parser.add_argument('--casename', type=str, required=True,
+                        help='Nome del caso (es. sb3701)')
+    parser.add_argument('--frame_num', type=int, default=0,
+                        help='Numero del frame (default: 0)')
+    parser.add_argument('--output_filename', type=str, required=True,
+                        help='nome del file di output senza estensione')
     args = parser.parse_args()
 
     if not args.input_model_path or not args.output_vtk_path:
-        args.input_model_path = "../../output-sb/sb501/sb501_model_frame_000.txt"
-        args.output_vtk_path = "../../output-sb/sb501/sb501_volmesh_tetratetgen.vtk"
-    
-    if os.path.exists(args.input_model_path):
-        export_volumetric_mesh(args.input_model_path, args.output_vtk_path, subdivision_level=0, thetrahedral=True)
-    else:
-        print("File di input non trovato. Esegui prima il fitting con biv-me.")
+        args.bivme_output_folder = "../../output-sb"
+        args.casename = "sb501"
+        args.output_filename = "sb501_volmesh_meshtool"
+
+    export_volumetric_mesh_meshtool(args.bivme_output_folder, args.casename, args.frame_num, args.output_filename)
