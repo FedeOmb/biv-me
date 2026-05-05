@@ -127,42 +127,42 @@ def fix_intersection(case_name: str, config: dict, model_file: os.PathLike, outp
             meshes = {}
             for surface in Surface:
                 mesh_data = {}
-                if surface.name in config["output"]["output_meshes"]:
+                if surface.name in config["output_fitting"]["output_meshes"]:
                     mesh_data[surface.name] = surface.value
-                    if surface.name == "LV_ENDOCARDIAL" and config["output"]["closed_mesh"] == True:
+                    if surface.name == "LV_ENDOCARDIAL" and config["output_fitting"]["closed_mesh"] == True:
                         mesh_data["MITRAL_VALVE"] = Surface.MITRAL_VALVE.value
                         mesh_data["AORTA_VALVE"] = Surface.AORTA_VALVE.value
-                    if surface.name == "EPICARDIAL" and config["output"]["closed_mesh"] == True:
+                    if surface.name == "EPICARDIAL" and config["output_fitting"]["closed_mesh"] == True:
                         mesh_data["PULMONARY_VALVE"] = Surface.PULMONARY_VALVE.value
                         mesh_data["TRICUSPID_VALVE"] = Surface.TRICUSPID_VALVE.value
                         mesh_data["MITRAL_VALVE"] = Surface.MITRAL_VALVE.value
                         mesh_data["AORTA_VALVE"] = Surface.AORTA_VALVE.value
                     meshes[surface.name] = mesh_data
 
-            if "RV_ENDOCARDIAL" in config["output"]["output_meshes"]:
+            if "RV_ENDOCARDIAL" in config["output_fitting"]["output_meshes"]:
                 mesh_data["RV_SEPTUM"] = Surface.RV_SEPTUM.value
                 mesh_data["RV_FREEWALL"] = Surface.RV_FREEWALL.value
-                if config["output"]["closed_mesh"]:
+                if config["output_fitting"]["closed_mesh"]:
                     mesh_data["PULMONARY_VALVE"] = Surface.PULMONARY_VALVE.value
                     mesh_data["TRICUSPID_VALVE"] = Surface.TRICUSPID_VALVE.value
                 meshes["RV_ENDOCARDIAL"] = mesh_data
 
             ##TODO remove duplicated code here - not sure how yet
-            if config["output"]["export_control_mesh"]:
+            if config["output_fitting"]["export_control_mesh"]:
                 control_mesh_meshes = {}
                 for surface in ControlMesh:
                     control_mesh_mesh_data = {}
-                    if surface.name in config["output"]["output_meshes"]:
+                    if surface.name in config["output_fitting"]["output_meshes"]:
                         control_mesh_mesh_data[surface.name] = surface.value
-                        if surface.name == "LV_ENDOCARDIAL" and config["output"]["closed_mesh"] == True:
+                        if surface.name == "LV_ENDOCARDIAL" and config["output_fitting"]["closed_mesh"] == True:
                             control_mesh_mesh_data["MITRAL_VALVE"] = ControlMesh.MITRAL_VALVE.value
                             control_mesh_mesh_data["AORTA_VALVE"] = ControlMesh.AORTA_VALVE.value
-                        if surface.name == "EPICARDIAL" and config["output"]["closed_mesh"] == True:
+                        if surface.name == "EPICARDIAL" and config["output_fitting"]["closed_mesh"] == True:
                             control_mesh_mesh_data["PULMONARY_VALVE"] = ControlMesh.PULMONARY_VALVE.value
                             control_mesh_mesh_data["TRICUSPID_VALVE"] = ControlMesh.TRICUSPID_VALVE.value
                             control_mesh_mesh_data["MITRAL_VALVE"] = ControlMesh.MITRAL_VALVE.value
                             control_mesh_mesh_data["AORTA_VALVE"] = ControlMesh.AORTA_VALVE.value
-                        if surface.name == "RV_ENDOCARDIAL" and config["output"]["closed_mesh"] == True:
+                        if surface.name == "RV_ENDOCARDIAL" and config["output_fitting"]["closed_mesh"] == True:
                             control_mesh_mesh_data["PULMONARY_VALVE"] = ControlMesh.PULMONARY_VALVE.value
                             control_mesh_mesh_data["TRICUSPID_VALVE"] = ControlMesh.TRICUSPID_VALVE.value
 
@@ -207,7 +207,7 @@ def fix_intersection(case_name: str, config: dict, model_file: os.PathLike, outp
                     return -1
 
             ##TODO remove duplicated code here - not sure how yet
-            if config["output"]["export_control_mesh"]:
+            if config["output_fitting"]["export_control_mesh"]:
                 for key, value in control_mesh_meshes.items():
                     vertices = np.array([]).reshape(0, 3)
                     faces_mapped = np.array([], dtype=np.int64).reshape(0, 3)
@@ -269,44 +269,60 @@ if __name__ == "__main__":
 
     # TOML Schema Validation
     match config:
-        case {
-            "input": {"gp_directory": str(),
-                      "gp_suffix": str(),
-                      "si_suffix": str(),
-                      },
+        case{
+            "modules": {"preprocessing": bool(), "fitting": bool()},
+
+            "logging": {"show_detailed_logging": bool(), "generate_log_file": bool()},
+
+            "plotting": {"generate_plots_preprocessing": bool(), "generate_plots_fitting": bool(), "include_images": bool(), "export_images": bool()},
+
+            "input_pp": {"source": str(),
+                        "batch_ID": str(),
+                        "analyst_id": str(),
+                        "processing": str(),
+                        "states": str()
+                        },
+            "view-selection": {"option": str(), "correct_mode": str()},
+            "contouring": {"smooth_landmarks": bool()},
+            "output_pp": {"overwrite": bool(), "output_directory": str()},
+
+            "input_fitting": {"gp_directory": str(),
+                        "gp_suffix": str(),
+                        "si_suffix": str(),
+                        },
             "breathhold_correction": {"shifting": str(), "ed_frame": int()},
             "gp_processing": {"sampling": int(), "num_of_phantom_points_av": int(), "num_of_phantom_points_mv": int(), "num_of_phantom_points_tv": int(), "num_of_phantom_points_pv": int()},
             "multiprocessing": {"workers": int()},
             "fitting_weights": {"guide_points": float(), "convex_problem": float(), "transmural": float()},
-            "output": {"output_directory": str(), "output_meshes": list(), "closed_mesh": bool(),  "show_logging": bool(), "export_control_mesh": bool(), "mesh_format": str(), "generate_log_file": bool(), "overwrite": bool()},
+            "output_fitting": {"output_directory": str(), "output_meshes": list(), "closed_mesh": bool(),   "export_control_mesh": bool(), "mesh_format": str(),  "overwrite": bool()},
         }:
             pass
         case _:
             raise ValueError(f"Invalid configuration: {config}")
 
 
-    if not config["output"]["show_logging"]:
+    if not config["logging"]["show_detailed_logging"]:
         logger.remove()
 
     log_level = "DEBUG"
     log_format = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS zz}</green> | <level>{level: <8}</level> | <yellow>Line {line: >4} ({file}):</yellow> <b>{message}</b>"
 
-    if not (config["output"]["mesh_format"].endswith('.obj') or config["output"]["mesh_format"].endswith('.vtk') or config["output"]["mesh_format"] == "none"):
-        logger.error(f'argument mesh_format must be .obj or .vtk. {config["output"]["mesh_format"]} given.')
+    if not (config["output_fitting"]["mesh_format"].endswith('.obj') or config["output_fitting"]["mesh_format"].endswith('.vtk') or config["output_fitting"]["mesh_format"] == "none"):
+        logger.error(f'argument mesh_format must be .obj or .vtk. {config["output_fitting"]["mesh_format"]} given.')
         sys.exit(0)
 
-    for mesh in config["output"]["output_meshes"]:
+    for mesh in config["output_fitting"]["output_meshes"]:
         if mesh not in ["LV_ENDOCARDIAL", "RV_ENDOCARDIAL", "EPICARDIAL"]:
             logger.error(f'argument output_meshes invalid. {mesh} given. Allowed values are "LV_ENDOCARDIAL", "RV_ENDOCARDIAL", "EPICARDIAL"')
             sys.exit(0)
 
     # save config file to the output folder
-    output_folder = Path(config["output"]["output_directory"]) / "corrected_models"
+    output_folder = Path(config["output_fitting"]["output_directory"]) / "corrected_models"
     output_folder.mkdir(parents=True, exist_ok=True)
     shutil.copy(args.config_file, output_folder)
 
-    case_list = os.listdir(config["output"]["output_directory"])
-    folders = [Path(config["output"]["output_directory"], case).as_posix() for case in case_list]
+    case_list = os.listdir(config["output_fitting"]["output_directory"])
+    folders = [Path(config["output_fitting"]["output_directory"], case).as_posix() for case in case_list]
 
     logger.info(f"Found {len(folders)} model folders.")
 
@@ -323,7 +339,7 @@ if __name__ == "__main__":
                     console = progress
 
                     for biv_model_file in models:
-                        fix_intersection(folder, config, biv_model_file, output_folder, biv_resource_folder, output_format = config["output"]["mesh_format"], gp_suffix=config["input"]["gp_suffix"])
+                        fix_intersection(folder, config, biv_model_file, output_folder, biv_resource_folder, output_format = config["output_fitting"]["mesh_format"], gp_suffix=config["input_fitting"]["gp_suffix"])
                         progress.advance(task)
 
         logger.success(f"Done. Results are saved in {output_folder}")

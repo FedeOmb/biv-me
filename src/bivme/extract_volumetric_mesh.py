@@ -92,7 +92,7 @@ if __name__ == "__main__":
                         help='nome del file di output senza estensione')
     args = parser.parse_args()
 
-    if not args.input_model_path or not args.output_vtk_path:
+    if not args.bivme_output_folder or not args.casename or not args.output_filename:
         args.bivme_output_folder = "../../output-sb"
         args.casename = "sb501"
         args.output_filename = "sb501_volmesh_meshtool"

@@ -1,6 +1,6 @@
 
 import numpy as np
-from scipy import optimize
+# from scipy import optimize
 from scipy.spatial import cKDTree
 from scipy.spatial import Delaunay
 
@@ -205,6 +205,7 @@ def register_group_points_translation_only(source_points, target_points,
                         fixed points
     output: 2D translation vector
     """
+    from scipy import optimize
     if isinstance(source_points,list):
         source_points = np.array(source_points)
     if isinstance(target_points, list):
