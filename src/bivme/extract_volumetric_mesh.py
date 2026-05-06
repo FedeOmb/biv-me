@@ -15,18 +15,18 @@ def fix_and_convert_vtk42(input_path, output_path):
     surface = pv.read(input_path)
 
     surface = surface.triangulate()
-    surface = surface.clean(tolerance=1e-6)
+   # surface = surface.clean(tolerance=1e-6)
 
-    print(f"Verifica e riparazione self-intersections per {os.path.basename(input_path)}...")
-    meshfix = pymeshfix.MeshFix(surface)
-    meshfix.repair(joincomp=True, remove_smallest_components=False)
-    surface = meshfix.mesh.clean(tolerance=1e-6)
+   # print(f"Verifica e riparazione self-intersections per {os.path.basename(input_path)}...")
+   # meshfix = pymeshfix.MeshFix(surface)
+   # meshfix.repair(joincomp=True, remove_smallest_components=True)
+   # surface = meshfix.mesh.clean(tolerance=1e-6)
 
-    edges = surface.extract_feature_edges(boundary_edges=True, non_manifold_edges=True)
-    if edges.n_cells > 0:
-        print(f"ATTENZIONE: Trovati {edges.n_cells} spigoli aperti, tento la chiusura...")
-        surface = surface.fill_holes(hole_size=50)
-        surface = surface.clean(tolerance=1e-6)
+   # edges = surface.extract_feature_edges(boundary_edges=True, non_manifold_edges=True)
+  #  if edges.n_cells > 0:
+ #       print(f"ATTENZIONE: Trovati {edges.n_cells} spigoli aperti, tento la chiusura...")
+ #       surface = surface.fill_holes(hole_size=50)
+ #       surface = surface.clean(tolerance=1e-6)
 
     writer = vtk.vtkPolyDataWriter()
     writer.SetInputData(surface)
@@ -56,11 +56,15 @@ def export_volumetric_mesh_meshtool(bivme_output_folder, casename, frame_num, ou
         fix_and_convert_vtk42(input_sur_path, output_sur_path)
         output_vtk42_paths.append(output_sur_path)
 
+    output_vol_folder = os.path.join(bivme_output_folder, casename, 'volumetric')
+    if not os.path.exists(output_vol_folder):
+        os.makedirs(output_vol_folder)
+
     print("Generazione mesh volumetrica con meshtool...")
     surf_arg = ",".join(output_vtk42_paths)
     ins_tag_arg = "3,2,1"
     output_vol_path = os.path.join(bivme_output_folder, casename, 'volumetric', output_filename)
-    cmd = [
+    cmd_vol = [
         "meshtool", "generate", "mesh",
         f"-surf={surf_arg}",
         f"-ins_tag={ins_tag_arg}",
@@ -68,12 +72,22 @@ def export_volumetric_mesh_meshtool(bivme_output_folder, casename, frame_num, ou
         "-scale=1.0",
         "-ofmt=vtk_bin"
     ]
-    
-    print(f"Esecuzione comando: {' '.join(cmd)}")
+    output_resample_mesh = os.path.join(bivme_output_folder,casename,'volumetric', casename+'_1500mm')
+    cmd_resample =[
+        "meshtool", "resample", "mesh",
+        f"-msh={output_vol_path}",
+        f"-ifmt=vtk_bin",
+        "-avrg=1.5",
+        f"-outmsh={output_resample_mesh}",
+        "-ofmt=vtk_bin"
+    ] 
     
     try:
-        subprocess.run(cmd, check=True)
+        print(f"Esecuzione comando: {' '.join(cmd_vol)}")
+        subprocess.run(cmd_vol, check=True)
         print(f"Mesh volumetrica creata con successo in: {output_vol_path}")
+        print(f"Esecuzione comando: {' '.join(cmd_resample)}")
+        subprocess.run(cmd_resample, check=True)
     except subprocess.CalledProcessError as e:
         print(f"Errore durante l'esecuzione di meshtool: {e}")
     except FileNotFoundError:
