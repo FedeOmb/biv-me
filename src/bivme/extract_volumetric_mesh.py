@@ -4,8 +4,8 @@ import argparse
 import numpy as np
 import pyvista as pv
 import vtk
-import tetgen
-import pymeshfix
+#import tetgen
+#import pymeshfix
 import subprocess
 from bivme import MODEL_RESOURCE_DIR
 
@@ -37,7 +37,7 @@ def fix_and_convert_vtk42(input_path, output_path):
     print(f"Mesh superficie convertita in vtk 42 per meshtool: {output_path}")
 
 
-def export_volumetric_mesh_meshtool(bivme_output_folder, casename, frame_num, output_filename):
+def export_volumetric_mesh_meshtool(bivme_output_folder, casename, frame_num):
 
     surface_filenames = [
         f"{casename}_EPICARDIAL_{frame_num:03d}",
@@ -63,7 +63,7 @@ def export_volumetric_mesh_meshtool(bivme_output_folder, casename, frame_num, ou
     print("Generazione mesh volumetrica con meshtool...")
     surf_arg = ",".join(output_vtk42_paths)
     ins_tag_arg = "3,2,1"
-    output_vol_path = os.path.join(bivme_output_folder, casename, 'volumetric', output_filename)
+    output_vol_path = os.path.join(bivme_output_folder, casename, 'volumetric', casename+'_volmesh')
     cmd_vol = [
         "meshtool", "generate", "mesh",
         f"-surf={surf_arg}",
@@ -102,13 +102,13 @@ if __name__ == "__main__":
                         help='Nome del caso (es. sb3701)')
     parser.add_argument('--frame_num', type=int, default=0,
                         help='Numero del frame (default: 0)')
-    parser.add_argument('--output_filename', type=str, required=True,
-                        help='nome del file di output senza estensione')
+    #parser.add_argument('--output_filename', type=str, required=False,
+    #                    help='nome del file di output senza estensione')
     args = parser.parse_args()
 
-    if not args.bivme_output_folder or not args.casename or not args.output_filename:
+    if not args.bivme_output_folder or not args.casename:
         args.bivme_output_folder = "../../output-sb"
         args.casename = "sb501"
-        args.output_filename = "sb501_volmesh_meshtool"
+        #args.output_filename = "sb501_volmesh_meshtool"
 
-    export_volumetric_mesh_meshtool(args.bivme_output_folder, args.casename, args.frame_num, args.output_filename)
+    export_volumetric_mesh_meshtool(args.bivme_output_folder, args.casename, args.frame_num)
