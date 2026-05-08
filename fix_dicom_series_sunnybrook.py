@@ -36,9 +36,9 @@ def verify_series_by_orientation(dataset_dir):
             if file.endswith(".dcm"):
                 path = os.path.join(root, file)
                 ds = pydicom.dcmread(path, stop_before_pixels=True)
-                tipo = get_plane_type(ds)
-                print(f"{os.path.basename(root)} -> {tipo}")
-                break
+                if "CINELAX" in ds.get("SeriesDescription", "").upper():
+                    tipo = get_plane_type(ds)
+                    print(f"{os.path.basename(root)} -> {tipo}")
 
 def fix_series_description(series_dir, type):
     for root, dirs, files in os.walk(series_dir):
@@ -54,10 +54,16 @@ def fix_series_description(series_dir, type):
                         ds.save_as(path)
 
 if __name__ == "__main__":
-    root_dir = os.path.join(".", "sunnybrook", "dicoms", "sb901")
+    root_dir = os.path.join(".", "sunnybrook", "dicoms", "sb4501")
     verify_series_by_orientation(root_dir)
 
-"""     series_dir = os.path.join(root_dir, "CINELAX_7")
-    fix_series_description(series_dir, "LAX_4Ch")
-    series_dir = os.path.join(root_dir, "CINELAX_8")
-    fix_series_description(series_dir, "LAX_2Ch")  """
+    # series_dir = os.path.join(root_dir, "CINELAX_1106")
+    # fix_series_description(series_dir, "LAX_4Ch")
+    # series_dir = os.path.join(root_dir, "CINELAX_1103")
+    # fix_series_description(series_dir, "LAX_2Ch")    
+    # series_dir = os.path.join(root_dir, "CINELAX_1108")
+    # fix_series_description(series_dir, "LAX_4Ch") 
+    # series_dir = os.path.join(root_dir, "CINELAX_1105")
+    # fix_series_description(series_dir, "LAX_4Ch") 
+    # series_dir = os.path.join(root_dir, "CINELAX_1104")
+    # fix_series_description(series_dir, "LAX_4Ch")     
