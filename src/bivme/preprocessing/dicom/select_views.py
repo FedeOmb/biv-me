@@ -2,6 +2,8 @@ import os
 import pandas as pd
 import numpy as np
 import statistics
+import subprocess
+import sys
 
 from bivme.preprocessing.dicom.src.viewselection import ViewSelector
 from bivme.preprocessing.dicom.src.predict_views import predict_views
@@ -9,6 +11,8 @@ from bivme.preprocessing.dicom.src.viewcorrection import VSGUI
 
 CONFIDENCE_THRESHOLD = 0.66  # Modify this to change the confidence threshold for view selection. If metadata and image-based predictions disagree, the image-based prediction will be used if its confidence is above this threshold. 
                             # Otherwise, the metadata-based prediction will be used.
+
+WEB_GUI = True
 
 def handle_duplicates(view_predictions, viewSelector, my_logger):
     ## Remove duplicates
@@ -77,6 +81,15 @@ def handle_duplicates(view_predictions, viewSelector, my_logger):
     return view_predictions
 
 def correct_views(patient, dst, viewSelector, csv_path, states_path, my_logger):
+
+    if WEB_GUI:
+        view_predictions, viewSelector = correct_views_webgui(patient, dst, viewSelector, csv_path, states_path, my_logger)
+    else:
+        view_predictions, viewSelector = correct_views_tk(patient, dst, viewSelector, csv_path, states_path, my_logger)
+    
+    return view_predictions, viewSelector
+
+def correct_views_tk(patient, dst, viewSelector, csv_path, states_path, my_logger):
     gui = VSGUI(patient, dst, viewSelector, my_logger)
     gui.correct_views_gui()
 
@@ -86,6 +99,39 @@ def correct_views(patient, dst, viewSelector, csv_path, states_path, my_logger):
     view_predictions.to_csv(states_path, mode='w', index=False) # Save to states path
 
     my_logger.success('View correction complete. Predictions saved.')
+
+    return view_predictions, viewSelector
+
+def correct_views_webgui(patient, dst, viewSelector, csv_path, states_path, my_logger):
+    my_logger.info("Starting web interface for view correction...")
+    my_logger.info("Open the view correction web gui to the page http://localhost/biv-me/viewcorrection")
+
+    #start script viewcorrection_webgui.py in a new subprocess with streamlit
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    web_script_path = os.path.join(current_dir, 'src','viewcorrection_webgui.py')
+
+    subprocess.run([
+            sys.executable, "-m", "streamlit", "run", 
+            web_script_path, 
+            "--server.headless","true",
+            "--server.port", "8095",
+            "--server.baseUrlPath", "/biv-me/viewcorrection",
+            "--server.enableCORS",   "false",  
+            "--server.enableXsrfProtection", "false",  
+            "--", patient, dst, csv_path 
+        ])  
+    my_logger.info("Web interface closed. Elaborating results...")  
+    
+    view_predictions = pd.read_csv(csv_path)
+    my_logger.info("----- Saving view predictions...")
+    for index, row in view_predictions.iterrows():
+        series = row['Series Number']
+        selected_view = row['Predicted View']
+        my_logger.info(f"----- Series {series} saved to {selected_view}.")
+
+    viewSelector.load_predictions()
+    view_predictions.to_csv(states_path, mode='w', index=False) 
+    my_logger.success("----- View predictions saved successfully. Pipeline resumed.")
 
     return view_predictions, viewSelector
 
